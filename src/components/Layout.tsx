@@ -7,18 +7,20 @@ type LayoutProps = {
 
 function Layout({ children }: LayoutProps) {
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <Header
         title="DevTrack"
         subtitle="Project management for development teams."
       />
 
-      <div>
+      <div className="flex">
         <Sidebar />
 
-        <main>{children}</main>
+        <main className="flex-1">
+          {children}
+        </main>
       </div>
-    </>
+    </div>
   )
 }
 
