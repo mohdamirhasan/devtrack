@@ -10,20 +10,20 @@ const navigation = [
 
 function Sidebar() {
   return (
-    <aside className="w-64 border-r border-gray-200 bg-white">
-      <div className="border-b border-gray-200 p-6">
-        <h1 className="text-xl font-bold text-gray-900">
-          DevTrack
-        </h1>
-      </div>
-
+    <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:block">
       <nav className="p-4">
         <ul className="space-y-1">
           {navigation.map((item) => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className={({ isActive }) =>
+                  `block rounded-lg px-4 py-2 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`
+                }
               >
                 {item.label}
               </NavLink>
