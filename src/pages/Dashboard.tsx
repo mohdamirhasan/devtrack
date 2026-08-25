@@ -1,8 +1,10 @@
 import StatCard from '../components/StatCard'
+import ProjectList from '../components/ProjectList'
+import { projects } from '../data/projects'
 
 function Dashboard() {
   return (
-    <div className="space-y-8 p-8">
+    <div className="space-y-10 p-8">
       <div>
         <h2 className="text-3xl font-bold text-gray-900">
           Dashboard
@@ -32,6 +34,8 @@ function Dashboard() {
           description="2 members joined this month"
         />
       </section>
+
+      <ProjectList projects={projects} />
     </div>
   )
 }
