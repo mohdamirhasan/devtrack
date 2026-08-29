@@ -1,6 +1,13 @@
 import type { Project } from '@/types/project'
-import { projects } from '@/data/projects'
+
+const API_URL = 'http://localhost:3000'
 
 export async function getProjects(): Promise<Project[]> {
-  return projects
+  const response = await fetch(`${API_URL}/projects`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch projects')
+  }
+
+  return response.json()
 }
