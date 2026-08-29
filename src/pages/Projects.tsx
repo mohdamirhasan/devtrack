@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ProjectCard from '@/components/ProjectCard'
 import NewProjectForm from '@/components/NewProjectForm'
 import {
@@ -9,16 +9,30 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { projects as initialProjects } from '@/data/projects'
+import { getProjects } from '@/api/projects'
 import type { Project } from '@/types/project'
 
 function Projects() {
-  const [projects, setProjects] = useState<Project[]>(initialProjects)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<
   Project['status'] | 'All'
 >('All')
+
+ useEffect(() => {
+  async function loadProjects() {
+    try {
+      const data = await getProjects()
+      setProjects(data)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  loadProjects()
+}, []) 
 
   const handleCreateProject = (
     project: Omit<Project, 'id' | 'progress' | 'members'>,
@@ -116,29 +130,32 @@ function Projects() {
   </div>
 </div>
 
-      {filteredProjects.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-          <h3 className="font-semibold text-gray-900">
-            No projects found
-          </h3>
+{isLoading ? (
+  <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
+    <p className="text-sm text-gray-500">
+      Loading projects...
+    </p>
+  </div>
+) : filteredProjects.length === 0 ? (
+  <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+    <h3 className="font-semibold text-gray-900">
+      No projects found
+    </h3>
 
-          <p className="mt-1 text-sm text-gray-500">
-            Try a different search term.
-          </p>
-        </div>
-      )}
-
-      {filteredProjects.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-            />
-          ))}
-        </div>
-      )}
-
+    <p className="mt-1 text-sm text-gray-500">
+      Try a different search term.
+    </p>
+  </div>
+) : (
+  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {filteredProjects.map((project) => (
+      <ProjectCard
+        key={project.id}
+        project={project}
+      />
+    ))}
+  </div>
+)}
       <Dialog
         open={isFormOpen}
         onOpenChange={setIsFormOpen}

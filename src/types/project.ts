@@ -1,4 +1,7 @@
-export type ProjectStatus = 'Planning' | 'In Progress' | 'Completed'
+export type ProjectStatus =
+  | 'Planning'
+  | 'In Progress'
+  | 'Completed'
 
 export type Project = {
   id: string
@@ -7,4 +10,10 @@ export type Project = {
   status: ProjectStatus
   progress: number
   members: number
+}
+
+export type CreateProjectInput = {
+  name: string
+  description: string
+  status: ProjectStatus
 }
