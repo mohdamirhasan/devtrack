@@ -1,30 +1,32 @@
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import type { Project } from '../types/project'
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import type { CreateProjectInput } from "@/types/project";
 
 const projectSchema = z.object({
   name: z
     .string()
-    .min(3, 'Project name must be at least 3 characters'),
+    .min(3, "Project name must be at least 3 characters"),
 
   description: z
     .string()
-    .min(10, 'Description must be at least 10 characters'),
+    .min(10, "Description must be at least 10 characters"),
 
-  status: z.enum(['Planning', 'In Progress', 'Completed']),
-})
+  status: z.enum(["Planning", "In Progress", "Completed"]),
+});
 
-type ProjectFormData = z.infer<typeof projectSchema>
+type ProjectFormData = z.infer<typeof projectSchema>;
 
 type NewProjectFormProps = {
-  onCreateProject: (
-    project: Omit<Project, 'id' | 'progress' | 'members'>,
-  ) => void
-}
+  onCreateProject: (project: CreateProjectInput) => void;
+  isCreating: boolean;
+  error: string | null;
+};
 
 function NewProjectForm({
   onCreateProject,
+  isCreating,
+  error,
 }: NewProjectFormProps) {
   const {
     register,
@@ -33,13 +35,13 @@ function NewProjectForm({
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      status: 'Planning',
+      status: "Planning",
     },
-  })
+  });
 
   const onSubmit = (data: ProjectFormData) => {
-    onCreateProject(data)
-  }
+    onCreateProject(data);
+  };
 
   return (
     <form
@@ -67,7 +69,7 @@ function NewProjectForm({
         <input
           id="name"
           type="text"
-          {...register('name')}
+          {...register("name")}
           className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-gray-900"
           placeholder="e.g. Website Redesign"
         />
@@ -89,7 +91,7 @@ function NewProjectForm({
 
         <textarea
           id="description"
-          {...register('description')}
+          {...register("description")}
           rows={4}
           className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-gray-900"
           placeholder="What is this project about?"
@@ -112,7 +114,7 @@ function NewProjectForm({
 
         <select
           id="status"
-          {...register('status')}
+          {...register("status")}
           className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2"
         >
           <option value="Planning">Planning</option>
@@ -120,15 +122,20 @@ function NewProjectForm({
           <option value="Completed">Completed</option>
         </select>
       </div>
-
+{error && (
+  <p className="text-sm text-red-600">
+    {error}
+  </p>
+)}
       <button
-        type="submit"
-        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 cursor-pointer"
-      >
-        Create Project
-      </button>
+  type="submit"
+  disabled={isCreating}
+  className="cursor-pointer rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {isCreating ? "Creating..." : "Create Project"}
+</button>
     </form>
-  )
+  );
 }
 
-export default NewProjectForm
+export default NewProjectForm;

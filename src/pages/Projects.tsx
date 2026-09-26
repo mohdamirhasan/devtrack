@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ProjectCard from "@/components/ProjectCard";
 import NewProjectForm from "@/components/NewProjectForm";
 import {
@@ -9,51 +10,41 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { getProjects } from "@/api/projects";
-import type { Project } from "@/types/project";
+import { createProject, getProjects } from "@/api/projects";
+import type { CreateProjectInput, Project } from "@/types/project";
 
 function Projects() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const createProjectMutation = useMutation({
+  mutationFn: createProject,
+
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["projects"],
+    });
+
+    setIsFormOpen(false);
+  },
+});
+
+  const handleCreateProject = (project: CreateProjectInput) => {
+    createProjectMutation.mutate(project);
+  };
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Project["status"] | "All">(
     "All",
   );
 
-  useEffect(() => {
-    async function loadProjects() {
-      try {
-        setError(null);
-
-        const data = await getProjects();
-
-        setProjects(data);
-      } catch {
-        setError("Unable to load projects.");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadProjects();
-  }, []);
-
-  const handleCreateProject = (
-    project: Omit<Project, "id" | "progress" | "members">,
-  ) => {
-    const newProject: Project = {
-      ...project,
-      id: crypto.randomUUID(),
-      progress: 0,
-      members: 0,
-    };
-
-    setProjects((currentProjects) => [...currentProjects, newProject]);
-
-    setIsFormOpen(false);
-  };
+  const {
+    data: projects = [],
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: getProjects,
+  });
 
   const filteredProjects = projects.filter((project) => {
     const query = searchQuery.toLowerCase().trim();
@@ -119,15 +110,15 @@ function Projects() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isPending ? (
         <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
           <p className="text-sm text-gray-500">Loading projects...</p>
         </div>
-      ) : error ? (
+      ) : isError ? (
         <div className="rounded-xl border border-red-200 bg-white p-10 text-center">
           <h3 className="font-semibold text-gray-900">Something went wrong</h3>
 
-          <p className="mt-1 text-sm text-gray-500">{error}</p>
+          <p className="mt-1 text-sm text-gray-500">Unable to load projects.</p>
         </div>
       ) : filteredProjects.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
@@ -144,6 +135,7 @@ function Projects() {
           ))}
         </div>
       )}
+
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -153,8 +145,15 @@ function Projects() {
               Create a new project for your team.
             </DialogDescription>
           </DialogHeader>
-
-          <NewProjectForm onCreateProject={handleCreateProject} />
+          <NewProjectForm
+  onCreateProject={handleCreateProject}
+  isCreating={createProjectMutation.isPending}
+  error={
+    createProjectMutation.isError
+      ? "Unable to create project."
+      : null
+  }
+/>
         </DialogContent>
       </Dialog>
     </div>
