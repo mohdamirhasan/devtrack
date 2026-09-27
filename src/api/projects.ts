@@ -15,6 +15,20 @@ export async function getProjects(): Promise<Project[]> {
   return response.json();
 }
 
+export async function getProject(id: string): Promise<Project> {
+  const response = await fetch(`${API_URL}/projects/${id}`);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Project not found");
+    }
+
+    throw new Error("Failed to fetch project");
+  }
+
+  return response.json();
+}
+
 export async function createProject(
   input: CreateProjectInput,
 ): Promise<Project> {

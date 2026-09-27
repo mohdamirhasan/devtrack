@@ -5,6 +5,7 @@ import Projects from './pages/Projects'
 import Tasks from './pages/Tasks'
 import Team from './pages/Team'
 import Settings from './pages/Settings'
+import ProjectDetails from "./pages/ProjectDetails";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:projectId" element={<ProjectDetails />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/team" element={<Team />} />
           <Route path="/settings" element={<Settings />} />
