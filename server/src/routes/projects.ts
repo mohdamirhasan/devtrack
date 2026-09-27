@@ -18,6 +18,34 @@ const createProjectSchema = z.object({
   ]),
 })
 
+const updateProjectSchema = z.object({
+  name: z
+    .string()
+    .min(3, "Project name must be at least 3 characters")
+    .optional(),
+
+  description: z
+    .string()
+    .min(10, "Description must be at least 10 characters")
+    .optional(),
+
+  status: z
+    .enum(["Planning", "In Progress", "Completed"])
+    .optional(),
+
+  progress: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional(),
+
+  members: z
+    .number()
+    .int()
+    .min(0)
+    .optional(),
+});
+
 const projects: Project[] = [
   {
     id: '1',
@@ -93,4 +121,29 @@ export async function projectRoutes(
 
     return reply.status(201).send(newProject)
   })
+
+  app.patch("/projects/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+
+  const project = projects.find((project) => project.id === id);
+
+  if (!project) {
+    return reply.status(404).send({
+      error: "Project not found",
+    });
+  }
+
+  const result = updateProjectSchema.safeParse(request.body);
+
+  if (!result.success) {
+    return reply.status(400).send({
+      error: "Validation failed",
+      details: result.error.flatten(),
+    });
+  }
+
+  Object.assign(project, result.data);
+
+  return project;
+  });
 }

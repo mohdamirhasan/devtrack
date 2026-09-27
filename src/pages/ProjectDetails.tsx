@@ -1,9 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { getProject } from "@/api/projects";
+import EditProjectForm from "@/components/EditProjectForm";
+import { updateProject, getProject } from "@/api/projects";
 
 function ProjectDetails() {
   const { projectId } = useParams();
+  const queryClient = useQueryClient();
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const {
     data: project,
@@ -16,10 +21,30 @@ function ProjectDetails() {
     enabled: Boolean(projectId),
   });
 
+  const updateProjectMutation = useMutation({
+    mutationFn: (data: {
+      name: string;
+      description: string;
+      status: "Planning" | "In Progress" | "Completed";
+      progress: number;
+      members: number;
+    }) => updateProject(projectId!, data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", projectId],
+      });
+
+      setIsEditOpen(false);
+    },
+  });
+
   if (isPending) {
     return (
       <div className="p-8">
-        <p className="text-sm text-gray-500">Loading project...</p>
+        <p className="text-sm text-gray-500">
+          Loading project...
+        </p>
       </div>
     );
   }
@@ -54,14 +79,24 @@ function ProjectDetails() {
         ← Back to Projects
       </Link>
 
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">
-          {project.name}
-        </h2>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">
+            {project.name}
+          </h2>
 
-        <p className="mt-2 text-gray-500">
-          {project.description}
-        </p>
+          <p className="mt-2 text-gray-500">
+            {project.description}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsEditOpen(true)}
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Edit Project
+        </button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -89,6 +124,37 @@ function ProjectDetails() {
           </p>
         </div>
       </div>
+
+      {isEditOpen && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Edit Project
+            </h3>
+
+            <button
+              type="button"
+              onClick={() => setIsEditOpen(false)}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <EditProjectForm
+            project={project}
+            onUpdateProject={(data) =>
+              updateProjectMutation.mutate(data)
+            }
+            isUpdating={updateProjectMutation.isPending}
+            error={
+  updateProjectMutation.isError
+    ? updateProjectMutation.error.message
+    : null
+}
+          />
+        </div>
+      )}
     </div>
   );
 }
