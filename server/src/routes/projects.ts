@@ -52,6 +52,20 @@ export async function projectRoutes(
     return projects
   })
 
+  app.get('/projects/:id', async (request, reply) => {
+  const { id } = request.params as { id: string }
+
+  const project = projects.find((project) => project.id === id)
+
+  if (!project) {
+    return reply.status(404).send({
+      error: 'Project not found',
+    })
+  }
+
+  return project
+  })
+
   app.post('/projects', async (request, reply) => {
     const result = createProjectSchema.safeParse(
       request.body,
