@@ -72,3 +72,23 @@ export async function updateProject(
 
   return response.json();
 }
+
+export async function deleteProject(id: string): Promise<Project> {
+  const response = await fetch(`${API_URL}/projects/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+
+    if (response.status === 404) {
+      throw new Error("Project not found");
+    }
+
+    throw new Error(
+      errorData?.error ?? `Failed to delete project (${response.status})`,
+    );
+  }
+
+  return response.json();
+}

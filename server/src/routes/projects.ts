@@ -146,4 +146,23 @@ export async function projectRoutes(
 
   return project;
   });
+
+  app.delete("/projects/:id", async (request, reply) => {
+  const { id } = request.params as { id: string }
+
+  const projectIndex = projects.findIndex(
+    (project) => project.id === id,
+  )
+
+  if (projectIndex === -1) {
+    return reply.status(404).send({
+      error: "Project not found",
+    })
+  }
+
+  const [deletedProject] = projects.splice(projectIndex, 1)
+
+  return reply.status(200).send(deletedProject)
+  })
+
 }
