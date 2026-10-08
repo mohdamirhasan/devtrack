@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { projectRoutes } from './routes/projects.js'
+import { taskRoutes } from "./routes/task.js";
 
 const app = Fastify({
   logger: true,
@@ -19,6 +20,7 @@ app.get('/health', async () => {
 })
 
 await app.register(projectRoutes)
+await app.register(taskRoutes)
 
 const port = 3000
 
