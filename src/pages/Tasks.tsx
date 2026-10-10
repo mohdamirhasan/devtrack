@@ -1,9 +1,5 @@
-import { useState } from "react";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +13,20 @@ import { getProjects } from "@/api/projects";
 import type { CreateTaskInput } from "@/types/task";
 import { Link } from "react-router";
 
+type StatusFilter = "All" | "Todo" | "In Progress" | "Completed";
+
+type PriorityFilter = "All" | "Low" | "Medium" | "High";
+
+type SortOption = "deadline-asc" | "deadline-desc" | "priority-desc";
+
 function Tasks() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("All");
+
+  const [sortBy, setSortBy] = useState<SortOption>("deadline-asc");
 
   const queryClient = useQueryClient();
 
@@ -36,6 +44,36 @@ function Tasks() {
     queryKey: ["projects"],
     queryFn: getProjects,
   });
+
+  const filteredTasks = useMemo(() => {
+    const filtered = tasks.filter((task) => {
+      const matchesStatus =
+        statusFilter === "All" || task.status === statusFilter;
+
+      const matchesPriority =
+        priorityFilter === "All" || task.priority === priorityFilter;
+
+      return matchesStatus && matchesPriority;
+    });
+
+    const priorityRank = {
+      High: 3,
+      Medium: 2,
+      Low: 1,
+    };
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "deadline-asc") {
+        return a.deadline.localeCompare(b.deadline);
+      }
+
+      if (sortBy === "deadline-desc") {
+        return b.deadline.localeCompare(a.deadline);
+      }
+
+      return priorityRank[b.priority] - priorityRank[a.priority];
+    });
+  }, [tasks, statusFilter, priorityFilter, sortBy]);
 
   const createTaskMutation = useMutation({
     mutationFn: createTask,
@@ -74,18 +112,14 @@ function Tasks() {
   if (isPending) {
     return (
       <main className="p-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Tasks
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
 
         <p className="mt-2 text-gray-500">
           Manage your development tasks here.
         </p>
 
         <div className="mt-8 rounded-xl border border-gray-200 bg-white p-10 text-center">
-          <p className="text-sm text-gray-500">
-            Loading tasks...
-          </p>
+          <p className="text-sm text-gray-500">Loading tasks...</p>
         </div>
       </main>
     );
@@ -94,22 +128,16 @@ function Tasks() {
   if (isError) {
     return (
       <main className="p-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Tasks
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
 
         <p className="mt-2 text-gray-500">
           Manage your development tasks here.
         </p>
 
         <div className="mt-8 rounded-xl border border-red-200 bg-white p-10 text-center">
-          <h2 className="font-semibold text-gray-900">
-            Unable to load tasks
-          </h2>
+          <h2 className="font-semibold text-gray-900">Unable to load tasks</h2>
 
-          <p className="mt-2 text-sm text-gray-500">
-            {error.message}
-          </p>
+          <p className="mt-2 text-sm text-gray-500">{error.message}</p>
         </div>
       </main>
     );
@@ -120,9 +148,7 @@ function Tasks() {
       {/* Page heading */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Tasks
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
 
           <p className="mt-2 text-gray-500">
             Manage your development tasks here.
@@ -132,30 +158,109 @@ function Tasks() {
         <button
           type="button"
           onClick={() => setIsFormOpen(true)}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
-        >
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800">
           + New Task
         </button>
       </div>
 
+      {/* Filters and sorting */}
+      <div className="grid gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label
+            htmlFor="status-filter"
+            className="mb-2 block text-sm font-medium text-gray-700">
+            Status
+          </label>
+
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as StatusFilter)
+            }
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500">
+            <option value="All">All statuses</option>
+            <option value="Todo">Todo</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="priority-filter"
+            className="mb-2 block text-sm font-medium text-gray-700">
+            Priority
+          </label>
+
+          <select
+            id="priority-filter"
+            value={priorityFilter}
+            onChange={(event) =>
+              setPriorityFilter(event.target.value as PriorityFilter)
+            }
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500">
+            <option value="All">All priorities</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="sort-by"
+            className="mb-2 block text-sm font-medium text-gray-700">
+            Sort by
+          </label>
+
+          <select
+            id="sort-by"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as SortOption)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500">
+            <option value="deadline-asc">Earliest deadline</option>
+            <option value="deadline-desc">Latest deadline</option>
+            <option value="priority-desc">Priority: High to Low</option>
+          </select>
+        </div>
+
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("All");
+              setPriorityFilter("All");
+              setSortBy("deadline-asc");
+            }}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+            Reset filters
+          </button>
+        </div>
+      </div>
+
+      <p className="text-sm text-gray-500">
+        Showing {filteredTasks.length} of {tasks.length} tasks
+      </p>
       {/* Empty state */}
-      {tasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
           <h2 className="font-semibold text-gray-900">
-            No tasks found
+            {tasks.length === 0 ? "No tasks found" : "No matching tasks"}
           </h2>
 
           <p className="mt-2 text-sm text-gray-500">
-            Create a task to get started.
+            {tasks.length === 0
+              ? "Create a task to get started."
+              : "Try changing your filters to see more tasks."}
           </p>
         </div>
       ) : (
         /* Task cards */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {tasks.map((task) => {
+          {filteredTasks.map((task) => {
             const isOverdue =
-              task.status !== "Completed" &&
-              task.deadline < todayString;
+              task.status !== "Completed" && task.deadline < todayString;
 
             const statusClasses: Record<string, string> = {
               Todo: "bg-gray-100 text-gray-700",
@@ -173,8 +278,7 @@ function Tasks() {
               <Link
                 key={task.id}
                 to={`/tasks/${task.id}`}
-                className="block rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-400 hover:shadow-md"
-              >
+                className="block rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-400 hover:shadow-md">
                 <article>
                   {/* Task title and priority */}
                   <div className="flex items-start justify-between gap-4">
@@ -192,8 +296,7 @@ function Tasks() {
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
                         priorityClasses[task.priority] ??
                         "bg-gray-100 text-gray-700"
-                      }`}
-                    >
+                      }`}>
                       {task.priority}
                     </span>
                   </div>
@@ -207,11 +310,8 @@ function Tasks() {
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span
                         className={`text-sm font-medium ${
-                          isOverdue
-                            ? "text-red-600"
-                            : "text-gray-700"
-                        }`}
-                      >
+                          isOverdue ? "text-red-600" : "text-gray-700"
+                        }`}>
                         {formatDeadline(task.deadline)}
                       </span>
 
@@ -233,8 +333,7 @@ function Tasks() {
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
                         statusClasses[task.status] ??
                         "bg-gray-100 text-gray-700"
-                      }`}
-                    >
+                      }`}>
                       {task.status}
                     </span>
                   </div>
@@ -246,10 +345,7 @@ function Tasks() {
       )}
 
       {/* New task dialog */}
-      <Dialog
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-      >
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>New Task</DialogTitle>
