@@ -28,6 +28,8 @@ function Tasks() {
 
   const [sortBy, setSortBy] = useState<SortOption>("deadline-asc");
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const queryClient = useQueryClient();
 
   const {
@@ -46,14 +48,21 @@ function Tasks() {
   });
 
   const filteredTasks = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
     const filtered = tasks.filter((task) => {
+      const matchesSearch =
+        normalizedQuery === "" ||
+        task.title.toLowerCase().includes(normalizedQuery) ||
+        task.description.toLowerCase().includes(normalizedQuery);
+
       const matchesStatus =
         statusFilter === "All" || task.status === statusFilter;
 
       const matchesPriority =
         priorityFilter === "All" || task.priority === priorityFilter;
 
-      return matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority;
     });
 
     const priorityRank = {
@@ -73,7 +82,7 @@ function Tasks() {
 
       return priorityRank[b.priority] - priorityRank[a.priority];
     });
-  }, [tasks, statusFilter, priorityFilter, sortBy]);
+  }, [tasks, searchQuery, statusFilter, priorityFilter, sortBy]);
 
   const createTaskMutation = useMutation({
     mutationFn: createTask,
@@ -163,6 +172,42 @@ function Tasks() {
         </button>
       </div>
 
+      {/* Task search */}
+      <div>
+        <label
+          htmlFor="task-search"
+          className="mb-2 block text-sm font-medium text-gray-700">
+          Search tasks
+        </label>
+
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm focus-within:border-gray-400">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 text-gray-400"
+            aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+
+          <input
+            id="task-search"
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search by task title or description..."
+            className="w-full bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+          />
+        </div>
+      </div>
+
       {/* Filters and sorting */}
       <div className="grid gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
         <div>
@@ -229,6 +274,7 @@ function Tasks() {
           <button
             type="button"
             onClick={() => {
+              setSearchQuery("");
               setStatusFilter("All");
               setPriorityFilter("All");
               setSortBy("deadline-asc");
