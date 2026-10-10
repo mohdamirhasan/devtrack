@@ -16,6 +16,7 @@ export type Task = {
   priority: TaskPriority;
   projectId: string;
   assignee: string;
+  deadline: string;
 };
 
 export type CreateTaskInput = {
@@ -25,4 +26,5 @@ export type CreateTaskInput = {
   priority: TaskPriority;
   projectId: string;
   assignee: string;
+  deadline: string;
 };

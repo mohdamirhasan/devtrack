@@ -16,6 +16,8 @@ const taskSchema = z.object({
   projectId: z.string().min(1, "Project is required"),
 
   assignee: z.string().min(1, "Assignee is required"),
+
+  deadline: z.iso.date("Please select a valid deadline"),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -43,6 +45,7 @@ function NewTaskForm({
       status: "Todo",
       priority: "Medium",
       projectId: "1",
+      deadline: "",
     },
   });
 
@@ -93,6 +96,28 @@ function NewTaskForm({
           </p>
         )}
       </div>
+
+      <div>
+  <label
+    htmlFor="task-deadline"
+    className="block text-sm font-medium text-gray-700"
+  >
+    Deadline
+  </label>
+
+  <input
+    id="task-deadline"
+    type="date"
+    {...register("deadline")}
+    className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-gray-900"
+  />
+
+  {errors.deadline && (
+    <p className="mt-1 text-sm text-red-600">
+      {errors.deadline.message}
+    </p>
+  )}
+</div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>

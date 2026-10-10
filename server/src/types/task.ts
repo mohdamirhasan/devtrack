@@ -16,4 +16,5 @@ export type Task = {
   priority: TaskPriority;
   projectId: string;
   assignee: string;
+  deadline: string;
 };

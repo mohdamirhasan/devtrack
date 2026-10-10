@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import type { Task } from "../types/task.js";
 import { z } from "zod";
 
+const deadlineSchema = z.iso.date("Deadline must be a valid date in YYYY-MM-DD format");
+
 const createTaskSchema = z.object({
   title: z.string().min(3, "Task title must be at least 3 characters"),
 
@@ -14,6 +16,8 @@ const createTaskSchema = z.object({
   projectId: z.string().min(1, "Project is required"),
 
   assignee: z.string().min(1, "Assignee is required"),
+
+  deadline: deadlineSchema,
 });
 
 const updateTaskSchema = z.object({
@@ -34,6 +38,8 @@ const updateTaskSchema = z.object({
   projectId: z.string().min(1, "Project is required").optional(),
 
   assignee: z.string().min(1, "Assignee is required").optional(),
+
+  deadline: deadlineSchema.optional(),
 });
 
 const tasks: Task[] = [
@@ -45,6 +51,7 @@ const tasks: Task[] = [
     priority: "High",
     projectId: "1",
     assignee: "Amir",
+    deadline: "2026-10-20",
   },
   {
     id: "2",
@@ -54,6 +61,7 @@ const tasks: Task[] = [
     priority: "High",
     projectId: "1",
     assignee: "Developer 2",
+    deadline: "2026-10-25",
   },
   {
     id: "3",
@@ -63,6 +71,7 @@ const tasks: Task[] = [
     priority: "Medium",
     projectId: "2",
     assignee: "Developer 3",
+    deadline: "2026-10-15",
   },
 ];
 
@@ -103,6 +112,7 @@ export async function taskRoutes(app: FastifyInstance) {
       priority: result.data.priority,
       projectId: result.data.projectId,
       assignee: result.data.assignee,
+      deadline: result.data.deadline,
     };
 
     tasks.push(newTask);

@@ -1,26 +1,28 @@
 import { useState } from "react";
 import {
+  Link,
+  useParams,
+} from "react-router";
+import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+
 import { getTask, updateTask } from "@/api/tasks";
 import { getProjects } from "@/api/projects";
-import type { CreateTaskInput } from "@/types/task";
 import EditTaskForm from "@/components/EditTaskForm";
+import type { CreateTaskInput } from "@/types/task";
 
-function TaskDetails() {
+export default function TaskDetails() {
   const { taskId } = useParams();
   const queryClient = useQueryClient();
-
-  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const {
     data: task,
-    isPending,
-    isError,
-    error,
+    isLoading: isTaskLoading,
+    error: taskError,
   } = useQuery({
     queryKey: ["task", taskId],
     queryFn: () => getTask(taskId!),
@@ -29,9 +31,7 @@ function TaskDetails() {
 
   const {
     data: projects = [],
-    isPending: areProjectsPending,
-    isError: areProjectsError,
-    error: projectsError,
+    isLoading: isProjectsLoading,
   } = useQuery({
     queryKey: ["projects"],
     queryFn: getProjects,
@@ -41,196 +41,248 @@ function TaskDetails() {
     mutationFn: (data: CreateTaskInput) =>
       updateTask(taskId!, data),
 
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["task", taskId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["tasks"],
-        }),
-      ]);
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["task", taskId],
+      });
 
-      setIsEditOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: ["tasks"],
+      });
+
+      setIsEditing(false);
     },
   });
 
-  if (isPending) {
+  if (isTaskLoading || isProjectsLoading) {
     return (
-      <div className="p-8">
-        <p className="text-sm text-gray-500">Loading task...</p>
-      </div>
+      <main className="mx-auto max-w-4xl px-6 py-10">
+        <p className="text-gray-500">Loading task details...</p>
+      </main>
     );
   }
 
-  if (isError) {
+  if (taskError || !task) {
     return (
-      <div className="p-8">
-        <h2 className="text-2xl font-bold text-gray-900">
-          Unable to load task
-        </h2>
-
-        <p className="mt-2 text-sm text-gray-500">
-          {error.message}
+      <main className="mx-auto max-w-4xl px-6 py-10">
+        <p className="text-red-600">
+          {taskError instanceof Error
+            ? taskError.message
+            : "Task not found."}
         </p>
 
         <Link
           to="/tasks"
-          className="mt-4 inline-flex text-sm font-medium text-gray-600 hover:text-gray-900"
+          className="mt-4 inline-block text-sm font-medium text-gray-900 underline"
         >
-          ← Back to Tasks
+          Back to Tasks
         </Link>
-      </div>
+      </main>
     );
   }
 
   const project = projects.find(
-    (item) => item.id === task.projectId,
+    (project) => project.id === task.projectId,
   );
 
-  const statusStyles: Record<string, string> = {
+  // Format today's date as YYYY-MM-DD for a date-only comparison.
+  const today = new Date();
+
+  const todayString = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  // Avoid timezone shifts when formatting a date-only value.
+  const formattedDeadline = new Intl.DateTimeFormat(
+    undefined,
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  ).format(new Date(`${task.deadline}T00:00:00`));
+
+  const isOverdue =
+    task.status !== "Completed" &&
+    task.deadline < todayString;
+
+  const statusClasses: Record<string, string> = {
     Todo: "bg-gray-100 text-gray-700",
     "In Progress": "bg-blue-100 text-blue-700",
     Completed: "bg-green-100 text-green-700",
   };
 
-  const priorityStyles: Record<string, string> = {
+  const priorityClasses: Record<string, string> = {
     Low: "bg-gray-100 text-gray-700",
-    Medium: "bg-amber-100 text-amber-700",
+    Medium: "bg-yellow-100 text-yellow-700",
     High: "bg-red-100 text-red-700",
   };
 
   return (
-    <main className="space-y-8 p-8">
-      <Link
-        to="/tasks"
-        className="inline-flex text-sm font-medium text-gray-600 hover:text-gray-900"
-      >
-        ← Back to Tasks
-      </Link>
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      {/* Navigation */}
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <Link
+          to="/tasks"
+          className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
+        >
+          ← Back to Tasks
+        </Link>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div className="space-y-3">
-            <h1 className="text-3xl font-bold text-gray-900">
-              {task.title}
-            </h1>
-
-            <p className="max-w-3xl whitespace-pre-wrap text-gray-600">
-              {task.description}
-            </p>
-          </div>
-
+        {!isEditing && (
           <button
             type="button"
-            onClick={() => {
-              updateTaskMutation.reset();
-              setIsEditOpen((open) => !open);
-            }}
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            onClick={() => setIsEditing(true)}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
           >
-            {isEditOpen ? "Close Editor" : "Edit Task"}
+            Edit Task
           </button>
-        </div>
-      </section>
+        )}
+      </div>
 
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Status</p>
+      {/* Task heading */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mb-6">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                statusClasses[task.status] ??
+                "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {task.status}
+            </span>
 
-          <span
-            className={`mt-3 inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-              statusStyles[task.status] ?? ""
-            }`}
-          >
-            {task.status}
-          </span>
-        </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                priorityClasses[task.priority] ??
+                "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {task.priority} Priority
+            </span>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Priority</p>
+            {isOverdue && (
+              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
+                Overdue
+              </span>
+            )}
+          </div>
 
-          <span
-            className={`mt-3 inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-              priorityStyles[task.priority] ?? ""
-            }`}
-          >
-            {task.priority}
-          </span>
-        </div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            {task.title}
+          </h1>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Assignee</p>
-
-          <p className="mt-3 text-lg font-semibold text-gray-900">
-            {task.assignee}
+          <p className="mt-3 whitespace-pre-wrap leading-7 text-gray-600">
+            {task.description}
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Associated Project</p>
-
-          <p className="mt-3 text-lg font-semibold text-gray-900">
-            {areProjectsPending
-              ? "Loading project..."
-              : areProjectsError
-                ? "Unable to load project"
-                : (project?.name ?? "Project not found")}
-          </p>
-
-          {areProjectsError && (
-            <p className="mt-1 text-sm text-red-600">
-              {projectsError.message}
+        {/* Task information */}
+        <div className="grid gap-6 border-t border-gray-200 pt-6 sm:grid-cols-2">
+          {/* Status */}
+          <div>
+            <p className="text-sm text-gray-500">
+              Status
             </p>
-          )}
-        </div>
-      </section>
 
-      {isEditOpen && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Edit Task
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Update the task details below.
+            <p className="mt-1 font-medium text-gray-900">
+              {task.status}
             </p>
           </div>
 
-          {areProjectsPending ? (
+          {/* Priority */}
+          <div>
             <p className="text-sm text-gray-500">
-              Loading projects...
+              Priority
             </p>
-          ) : areProjectsError ? (
-            <p role="alert" className="text-sm text-red-600">
-              Unable to load projects: {projectsError.message}
+
+            <p className="mt-1 font-medium text-gray-900">
+              {task.priority}
             </p>
-          ) : (
-            <EditTaskForm
-              key={task.id}
-              task={task}
-              projects={projects}
-              onUpdateTask={(data) =>
-                updateTaskMutation.mutate(data)
-              }
-              isUpdating={updateTaskMutation.isPending}
-              error={
-                updateTaskMutation.isError
-                  ? updateTaskMutation.error.message
+          </div>
+
+          {/* Assignee */}
+          <div>
+            <p className="text-sm text-gray-500">
+              Assignee
+            </p>
+
+            <p className="mt-1 font-medium text-gray-900">
+              {task.assignee}
+            </p>
+          </div>
+
+          {/* Project */}
+          <div>
+            <p className="text-sm text-gray-500">
+              Project
+            </p>
+
+            <p className="mt-1 font-medium text-gray-900">
+              {project?.name ?? "Unknown project"}
+            </p>
+          </div>
+
+          {/* Deadline */}
+          <div>
+            <p className="text-sm text-gray-500">
+              Deadline
+            </p>
+
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p
+                className={`font-medium ${
+                  isOverdue
+                    ? "text-red-600"
+                    : "text-gray-900"
+                }`}
+              >
+                {formattedDeadline}
+              </p>
+
+              {isOverdue && (
+                <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+                  Overdue
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Edit task form */}
+      {isEditing && (
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="mb-6 text-xl font-semibold text-gray-900">
+            Edit Task
+          </h2>
+
+          <EditTaskForm
+            task={task}
+            projects={projects}
+            onUpdateTask={(data) =>
+              updateTaskMutation.mutate(data)
+            }
+            isUpdating={updateTaskMutation.isPending}
+            error={
+              updateTaskMutation.error instanceof Error
+                ? updateTaskMutation.error.message
+                : updateTaskMutation.error
+                  ? "Failed to update task."
                   : null
-              }
-            />
-          )}
+            }
+          />
 
           <button
             type="button"
             onClick={() => {
+              setIsEditing(false);
               updateTaskMutation.reset();
-              setIsEditOpen(false);
             }}
-            disabled={updateTaskMutation.isPending}
-            className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             Cancel
           </button>
@@ -239,5 +291,3 @@ function TaskDetails() {
     </main>
   );
 }
-
-export default TaskDetails;

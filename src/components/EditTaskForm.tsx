@@ -25,6 +25,8 @@ const editTaskSchema = z.object({
     .string()
     .trim()
     .min(1, "Assignee is required"),
+
+  deadline: z.iso.date("Please select a valid deadline"),
 });
 
 type EditTaskFormData = z.infer<typeof editTaskSchema>;
@@ -57,6 +59,7 @@ function EditTaskForm({
       priority: task.priority,
       projectId: task.projectId,
       assignee: task.assignee,
+      deadline: task.deadline,
     },
   });
 
@@ -109,6 +112,28 @@ function EditTaskForm({
           </p>
         )}
       </div>
+
+      <div>
+  <label
+    htmlFor="edit-task-deadline"
+    className="block text-sm font-medium text-gray-700"
+  >
+    Deadline
+  </label>
+
+  <input
+    id="edit-task-deadline"
+    type="date"
+    {...register("deadline")}
+    className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-gray-900"
+  />
+
+  {errors.deadline && (
+    <p className="mt-1 text-sm text-red-600">
+      {errors.deadline.message}
+    </p>
+  )}
+</div>
 
       <div>
         <label
