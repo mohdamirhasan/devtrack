@@ -1,23 +1,28 @@
 import { useState } from "react";
-import {
-  Link,
-  useParams,
-} from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { getTask, updateTask } from "@/api/tasks";
+import {
+  deleteTask,
+  getTask,
+  updateTask,
+} from "@/api/tasks";
 import { getProjects } from "@/api/projects";
 import EditTaskForm from "@/components/EditTaskForm";
 import type { CreateTaskInput } from "@/types/task";
 
 export default function TaskDetails() {
   const { taskId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] =
+    useState(false);
 
   const {
     data: task,
@@ -37,6 +42,7 @@ export default function TaskDetails() {
     queryFn: getProjects,
   });
 
+  // Update task mutation
   const updateTaskMutation = useMutation({
     mutationFn: (data: CreateTaskInput) =>
       updateTask(taskId!, data),
@@ -54,10 +60,30 @@ export default function TaskDetails() {
     },
   });
 
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: () => deleteTask(taskId!),
+
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["tasks"],
+        }),
+        queryClient.removeQueries({
+          queryKey: ["task", taskId],
+        }),
+      ]);
+
+      navigate("/tasks", { replace: true });
+    },
+  });
+
   if (isTaskLoading || isProjectsLoading) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <p className="text-gray-500">Loading task details...</p>
+        <p className="text-gray-500">
+          Loading task details...
+        </p>
       </main>
     );
   }
@@ -85,7 +111,7 @@ export default function TaskDetails() {
     (project) => project.id === task.projectId,
   );
 
-  // Format today's date as YYYY-MM-DD for a date-only comparison.
+  // Get today's date in YYYY-MM-DD format.
   const today = new Date();
 
   const todayString = [
@@ -94,7 +120,7 @@ export default function TaskDetails() {
     String(today.getDate()).padStart(2, "0"),
   ].join("-");
 
-  // Avoid timezone shifts when formatting a date-only value.
+  // Format the deadline without a timezone shift.
   const formattedDeadline = new Intl.DateTimeFormat(
     undefined,
     {
@@ -122,8 +148,8 @@ export default function TaskDetails() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      {/* Navigation */}
-      <div className="mb-8 flex items-center justify-between gap-4">
+      {/* Navigation and actions */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <Link
           to="/tasks"
           className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
@@ -132,17 +158,30 @@ export default function TaskDetails() {
         </Link>
 
         {!isEditing && (
-          <button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
-          >
-            Edit Task
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+            >
+              Edit Task
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeleteDialogOpen(true);
+                deleteTaskMutation.reset();
+              }}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              Delete Task
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Task heading */}
+      {/* Task details */}
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-6">
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -182,7 +221,6 @@ export default function TaskDetails() {
 
         {/* Task information */}
         <div className="grid gap-6 border-t border-gray-200 pt-6 sm:grid-cols-2">
-          {/* Status */}
           <div>
             <p className="text-sm text-gray-500">
               Status
@@ -193,7 +231,6 @@ export default function TaskDetails() {
             </p>
           </div>
 
-          {/* Priority */}
           <div>
             <p className="text-sm text-gray-500">
               Priority
@@ -204,7 +241,6 @@ export default function TaskDetails() {
             </p>
           </div>
 
-          {/* Assignee */}
           <div>
             <p className="text-sm text-gray-500">
               Assignee
@@ -215,7 +251,6 @@ export default function TaskDetails() {
             </p>
           </div>
 
-          {/* Project */}
           <div>
             <p className="text-sm text-gray-500">
               Project
@@ -226,7 +261,6 @@ export default function TaskDetails() {
             </p>
           </div>
 
-          {/* Deadline */}
           <div>
             <p className="text-sm text-gray-500">
               Deadline
@@ -287,6 +321,83 @@ export default function TaskDetails() {
             Cancel
           </button>
         </section>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {isDeleteDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !deleteTaskMutation.isPending
+            ) {
+              setIsDeleteDialogOpen(false);
+            }
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-task-title"
+            aria-describedby="delete-task-description"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          >
+            <h2
+              id="delete-task-title"
+              className="text-xl font-semibold text-gray-900"
+            >
+              Delete Task?
+            </h2>
+
+            <p
+              id="delete-task-description"
+              className="mt-3 text-sm leading-6 text-gray-600"
+            >
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-gray-900">
+                {task.title}
+              </span>
+              ? This action cannot be undone.
+            </p>
+
+            {deleteTaskMutation.isError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+              >
+                {deleteTaskMutation.error instanceof Error
+                  ? deleteTaskMutation.error.message
+                  : "Failed to delete the task. Please try again."}
+              </p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={deleteTaskMutation.isPending}
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  deleteTaskMutation.reset();
+                }}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={deleteTaskMutation.isPending}
+                onClick={() => deleteTaskMutation.mutate()}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteTaskMutation.isPending
+                  ? "Deleting..."
+                  : "Delete Task"}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );
