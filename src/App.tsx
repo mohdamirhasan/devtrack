@@ -6,6 +6,7 @@ import Tasks from './pages/Tasks'
 import Team from './pages/Team'
 import Settings from './pages/Settings'
 import ProjectDetails from "./pages/ProjectDetails";
+import TaskDetails from "./pages/TaskDetails";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/team" element={<Team />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/tasks/:taskId" element={<TaskDetails />} />
         </Routes>
       </Layout>
     </BrowserRouter>

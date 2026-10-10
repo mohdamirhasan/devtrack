@@ -15,6 +15,7 @@ import NewTaskForm from "@/components/NewTaskForm";
 import { createTask, getTasks } from "@/api/tasks";
 import { getProjects } from "@/api/projects";
 import type { CreateTaskInput } from "@/types/task";
+import { Link } from "react-router";
 
 function Tasks() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -133,36 +134,39 @@ function Tasks() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {tasks.map((task) => (
-            <article
+            <Link
               key={task.id}
-              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+              to={`/tasks/${task.id}`}
+              className="block rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-400 hover:shadow-md"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-semibold text-gray-900">
-                    {task.title}
-                  </h2>
+              <article className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-semibold text-gray-900">
+                      {task.title}
+                    </h2>
 
-                  <p className="mt-1 text-sm text-gray-500">
-                    {task.description}
-                  </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {task.description}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                    {task.priority}
+                  </span>
                 </div>
 
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                  {task.priority}
-                </span>
-              </div>
+                <div className="mt-6 flex items-center justify-between">
+                  <span className="text-sm text-gray-500">
+                    {task.assignee}
+                  </span>
 
-              <div className="mt-6 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  {task.assignee}
-                </span>
-
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                  {task.status}
-                </span>
-              </div>
-            </article>
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                    {task.status}
+                  </span>
+                </div>
+              </article>
+            </Link>
           ))}
         </div>
       )}
